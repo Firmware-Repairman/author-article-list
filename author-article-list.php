@@ -1,13 +1,13 @@
 <?php
 /**
  * Plugin Name:       AuthorArticleList
- * Plugin URI:        https://example.com/author-article-list
- * Description:       A plugin that displays a list of authors and their articles published in the last year on a settings page.
+ * Plugin URI:        https://github.com/Firmware-Repairman/author-article-list
+ * Description:       A plugin that displays a list of authors and their articles published in the last year on the settings page.
  * Version:           1.1
  * Requires at least: 5.2
  * Requires PHP:      7.2
- * Author:            Your Name
- * Author URI:        https://example.com/
+ * Author:            Craig Mautner for Mission Local SF
+ * Author URI:        https://firmware-repairman.pro
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  */
