@@ -73,6 +73,8 @@ function aal_render_settings_page() {
         foreach ($authors as $author) {
             $author_id = $author->ID;
             $author_name = esc_html($author->display_name);
+			$category_chinese = 75862;
+			$category_en_espanol = 9178;
 
             // SQL query to get all articles for the current author within the last year.
             $articles_query = $wpdb->prepare(
@@ -83,6 +85,14 @@ function aal_render_settings_page() {
                 AND post_status = 'publish'
                 AND post_type = 'post'
                 AND post_date >= %s
+				AND ID NOT IN (
+					SELECT tr.object_id
+					FROM {$wpdb->term_relationships} AS tr
+					INNER JOIN {$wpdb->term_taxonomy} AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+					WHERE (tt.term_id = $category_chinese
+					OR tt.term_id = $category_en_espanol)
+					AND tt.taxonomy = 'category'
+				)
                 ORDER BY post_date DESC
                 ",
                 $author_id,
