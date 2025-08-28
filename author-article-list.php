@@ -3,7 +3,7 @@
  * Plugin Name:       AuthorArticleList
  * Plugin URI:        https://github.com/Firmware-Repairman/author-article-list
  * Description:       A plugin that displays a list of authors and their articles published in the last year on the settings page.
- * Version:           1.1
+ * Version:           1.2
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            Craig Mautner for Mission Local SF
@@ -22,7 +22,7 @@ if (!defined('ABSPATH')) {
 function aal_add_admin_menu() {
     add_options_page(
         'Author Article List Settings',    // Page title
-        'Author Articles',                 // Menu title
+        'Author Articles List',            // Menu title
         'manage_options',                  // Capability required to see the menu
         'author-article-list',             // Menu slug
         'aal_render_settings_page'         // The function to call to render the page
@@ -73,6 +73,8 @@ function aal_render_settings_page() {
         foreach ($authors as $author) {
             $author_id = $author->ID;
             $author_name = esc_html($author->display_name);
+            $category_chinese = 75862;
+            $category_en_espanol = 9178;
 
             // SQL query to get all articles for the current author within the last year.
             $articles_query = $wpdb->prepare(
@@ -83,6 +85,13 @@ function aal_render_settings_page() {
                 AND post_status = 'publish'
                 AND post_type = 'post'
                 AND post_date >= %s
+                AND ID NOT IN (
+                    SELECT tr.object_id
+                    FROM {$wpdb->term_relationships} AS tr
+                    INNER JOIN {$wpdb->term_taxonomy} AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+                    WHERE (tt.term_id = $category_chinese OR tt.term_id = $category_en_espanol)
+                    AND tt.taxonomy = 'category'
+                )
                 ORDER BY post_date DESC
                 ",
                 $author_id,
