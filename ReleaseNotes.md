@@ -1,7 +1,31 @@
 # Release Notes
 
-These are the release notes for **AuthorArticleList.php**. The format is
+These are the release notes for **author-article-list.php**. The format is
 **v{MAJOR}.{MINOR}
+
+
+# v1.3
+
+2025-09-07
+
+## Fixed
+
+None
+
+## Added
+
+- Radio buttons for different time ranges rather than only for the past year
+
+## Changed
+
+None
+
+## Removed
+
+None
+
+----
+----
 
 # v1.2
 
@@ -17,8 +41,14 @@ None
 
 ## Changed
 
-- Articles in categories **Chinese** and **En Espanol** are filtered out
+None
 
+## Removed
+
+- Articles in the categories **Chinese** or **En Espanol** have been removed to 
+eliminate redundant reporting of the same article
+
+----
 ----
 
 # v1.1
@@ -36,3 +66,8 @@ None
 
 ## Changed
 
+None
+
+## Removed
+
+None
