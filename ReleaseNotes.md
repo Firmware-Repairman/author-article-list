@@ -37,13 +37,15 @@ None
 
 ## Added
 
+None
+
 ## Changed
 
 None
 
 ## Removed
 
-- Articles in the categories Chinese or En Espanol have been removed to 
+- Articles in the categories **Chinese** or **En Espanol** have been removed to 
 eliminate redundant reporting of the same article
 
 ----
