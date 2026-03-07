@@ -3,7 +3,7 @@
  * Plugin Name:       AuthorArticleList
  * Plugin URI:        https://github.com/Firmware-Repairman/author-article-list
  * Description:       A plugin that displays a list of authors and their articles published in the specified period on the settings page.
- * Version:           1.3
+ * Version:           1.4
  * Requires at least: 5.2
  * Requires PHP:      7.2
  * Author:            Craig Mautner for Mission Local SF
@@ -64,6 +64,7 @@ function aal_render_settings_page() {
         }
         ?>
     </form>
+    <button id="aal-download-csv" class="button button-primary" style="margin-top: 10px;">Download CSV</button>
 
     <div id="aal-content-area" class="author-article-list-admin-container">
 
@@ -106,22 +107,32 @@ function aal_render_settings_page() {
                 var selected_value = $(this).val();
                 load_content(selected_value);
             });
+
+            // Handle CSV download
+            $('#aal-download-csv').on('click', function(e) {
+                e.preventDefault();
+                var range = $('input[name="RadioRange"]:checked').val();
+                var nonce = '<?php echo esc_js($nonce); ?>';
+                window.location.href = '<?php echo esc_url(admin_url('admin-ajax.php')); ?>?action=aal_download_csv&range=' + encodeURIComponent(range) + '&security=' + nonce;
+            });
         });
     </script>
     <?php
 }
 
-function aal_handle_ajax_query() {
-    // Verify the nonce for security.
-    check_ajax_referer('dcr_nonce', 'security');
-
-    $range  = isset($_POST['range']) ? sanitize_text_field($_POST['range']) : '1 year ago';
-    update_option('aal_range', $range);
-
+/**
+ * Get report data for a specific range.
+ *
+ * @param string $range The date range string (e.g., '1 year ago').
+ * @return array Array of objects containing author details and their articles.
+ */
+function aal_get_report_data($range) {
     global $wpdb;
 
     // Set the time to a particular range prior to the current date.
     $prior_date = date('Y-m-d H:i:s', strtotime($range));
+    $category_chinese = 75862;
+    $category_en_espanol = 9178;
 
     // SQL query to get authors who have published an article in the last year.
     $authors_query = $wpdb->prepare(
@@ -138,21 +149,10 @@ function aal_handle_ajax_query() {
     );
 
     $authors = $wpdb->get_results($authors_query);
+    $data = [];
 
-    echo "
-       <div class='wrap'>
-       <h1>Articles published since $range sorted by author</h1>
-       ";
-
-    if (empty($authors)) {
-        echo "<p>No authors found with articles published since $range.</p>";
-    } else {
-        echo '<div class="author-article-list-admin-container">';
+    if ($authors) {
         foreach ($authors as $author) {
-            $author_name = esc_html($author->display_name);
-            $category_chinese = 75862;
-            $category_en_espanol = 9178;
-
             // SQL query to get all articles for the current author within the last year.
             $articles_query = $wpdb->prepare(
                 "
@@ -166,20 +166,50 @@ function aal_handle_ajax_query() {
                     SELECT tr.object_id
                     FROM {$wpdb->term_relationships} AS tr
                     INNER JOIN {$wpdb->term_taxonomy} AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
-                    WHERE (tt.term_id = $category_chinese
-                    OR tt.term_id = $category_en_espanol)
+                    WHERE (tt.term_id = %d
+                    OR tt.term_id = %d)
                     AND tt.taxonomy = 'category'
                 )
                 ORDER BY post_date DESC
                 ",
                 $author->ID,
-                $prior_date
+                $prior_date,
+                $category_chinese,
+                $category_en_espanol
             );
 
             $articles = $wpdb->get_results($articles_query);
-            if (empty($articles)) {
-                echo "<p>No articles found for $author_name in the last year.</p>";
-            } else {
+            if (!empty($articles)) {
+                $author->articles = $articles;
+                $data[] = $author;
+            }
+        }
+    }
+    return $data;
+}
+
+function aal_handle_ajax_query() {
+    // Verify the nonce for security.
+    check_ajax_referer('dcr_nonce', 'security');
+
+    $range  = isset($_POST['range']) ? sanitize_text_field($_POST['range']) : '1 year ago';
+    update_option('aal_range', $range);
+
+    $authors = aal_get_report_data($range);
+
+    echo "
+       <div class='wrap'>
+       <h1>Articles published since $range sorted by author</h1>
+       ";
+
+    if (empty($authors)) {
+        echo "<p>No authors found with articles published since $range.</p>";
+    } else {
+        echo '<div class="author-article-list-admin-container">';
+        foreach ($authors as $author) {
+            $author_name = esc_html($author->display_name);
+            $articles = $author->articles;
+            if (!empty($articles)) {
                 $article_count = count($articles);
                 echo "<h3>$author_name ($article_count articles)</h3>";
                 echo '<ul>';
@@ -221,4 +251,75 @@ function aal_handle_ajax_query() {
 // Hook the AJAX handler for both logged-in and logged-out users.
 add_action('wp_ajax_aal_filter_query', 'aal_handle_ajax_query');
 add_action('wp_ajax_nopriv_aal_filter_query', 'aal_handle_ajax_query');
+
+/**
+ * Handle CSV download request.
+ */
+function aal_handle_csv_download() {
+    check_ajax_referer('dcr_nonce', 'security');
+
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized');
+    }
+
+    $range = isset($_GET['range']) ? sanitize_text_field($_GET['range']) : '1 year ago';
+
+    $authors_data_raw = aal_get_report_data($range);
+
+    // Prepare data structure
+    $authors_data = [];
+    $range_ts = strtotime($range);
+
+    $min_ts = $range_ts;
+    if (date('Y', $range_ts) == 1970 && !empty($authors_data_raw)) {
+        $timestamps = [];
+        foreach ($authors_data_raw as $author) {
+            foreach ($author->articles as $article) {
+                $timestamps[] = strtotime($article->post_date);
+            }
+        }
+        if ($timestamps) {
+            $min_ts = min($timestamps);
+        }
+    }
+
+    $start_ts = mktime(0, 0, 0, date('n', $min_ts), 1, date('Y', $min_ts));
+
+    $months = [];
+    $current_ts = $start_ts;
+    $end_ts = mktime(0, 0, 0, date('n'), 1, date('Y'));
+
+    while ($current_ts <= $end_ts) {
+        $months[date('Y-m', $current_ts)] = date('M Y', $current_ts);
+        $current_ts = strtotime('+1 month', $current_ts);
+    }
+
+    foreach ($authors_data_raw as $author) {
+        $name = $author->display_name;
+        if (!isset($authors_data[$name])) $authors_data[$name] = ['name' => $name, 'total' => 0, 'counts' => []];
+
+        foreach ($author->articles as $article) {
+            $article_ts = strtotime($article->post_date);
+            $key = date('Y-m', $article_ts);
+            if (!isset($authors_data[$name]['counts'][$key])) $authors_data[$name]['counts'][$key] = 0;
+            $authors_data[$name]['counts'][$key]++;
+            $authors_data[$name]['total']++;
+        }
+    }
+
+    usort($authors_data, function($a, $b) { return $b['total'] - $a['total']; });
+
+    header('Content-Type: text/csv');
+    header('Content-Disposition: attachment; filename="author_articles.csv"');
+    $fp = fopen('php://output', 'w');
+    fputcsv($fp, array_merge(['Name'], array_values($months)));
+    foreach ($authors_data as $author) {
+        $row = [$author['name']];
+        foreach (array_keys($months) as $m) $row[] = $author['counts'][$m] ?? 0;
+        fputcsv($fp, $row);
+    }
+    fclose($fp);
+    wp_die();
+}
+add_action('wp_ajax_aal_download_csv', 'aal_handle_csv_download');
 ?>
