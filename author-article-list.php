@@ -133,6 +133,7 @@ function aal_get_report_data($range) {
     $prior_date = date('Y-m-d H:i:s', strtotime($range));
     $category_chinese = 75862;
     $category_en_espanol = 9178;
+    $category_snaps = 10487;
 
     // SQL query to get authors who have published an article in the last year.
     $authors_query = $wpdb->prepare(
@@ -167,6 +168,7 @@ function aal_get_report_data($range) {
                     FROM {$wpdb->term_relationships} AS tr
                     INNER JOIN {$wpdb->term_taxonomy} AS tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
                     WHERE (tt.term_id = %d
+                    OR tt.term_id = %d
                     OR tt.term_id = %d)
                     AND tt.taxonomy = 'category'
                 )
@@ -175,7 +177,8 @@ function aal_get_report_data($range) {
                 $author->ID,
                 $prior_date,
                 $category_chinese,
-                $category_en_espanol
+                $category_en_espanol,
+                $category_snaps
             );
 
             $articles = $wpdb->get_results($articles_query);
