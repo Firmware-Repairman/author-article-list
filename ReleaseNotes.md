@@ -4,6 +4,30 @@ These are the release notes for **author-article-list.php**. The format is
 **v{MAJOR}.{MINOR}
 
 
+# v1.4
+
+22026-03-08
+
+## Fixed
+
+None
+
+## Added
+
+- Button to download a CSV file containing each author's output by month
+- Filter out SNAPS articles from results
+
+## Changed
+
+None
+
+## Removed
+
+None
+
+----
+----
+
 # v1.3
 
 2025-09-07
@@ -45,7 +69,7 @@ None
 
 ## Removed
 
-- Articles in the categories **Chinese** or **En Espanol** have been removed to 
+- Articles in the categories **Chinese** or **En Espanol** have been removed to
 eliminate redundant reporting of the same article
 
 ----
